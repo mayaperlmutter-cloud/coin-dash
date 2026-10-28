@@ -1,5 +1,4 @@
 /* global Phaser, COIN_DASH */
-
 const HIGH_SCORE_KEY = 'coinDash.highScore';
 
 // Tiny Web Audio synth: no audio files. The context is created lazily on first use
@@ -29,13 +28,12 @@ const Sfx = {
     const ctx = this.context();
     if (!ctx) return;
     const t = ctx.currentTime;
-    const v = COIN_DASH.soundVolume;
+    const v = COIN_DASH.soundVolume || 0.15;
     // Classic two-note "bling": B5 then E6.
     this.tone(ctx, 987.77, t, 0.08, v);
     this.tone(ctx, 1318.51, t + 0.07, 0.22, v);
   }
 };
-
 
 class CoinDash extends Phaser.Scene {
   constructor() { super('CoinDash'); }
@@ -68,14 +66,11 @@ class CoinDash extends Phaser.Scene {
     this.physics.add.overlap(this.player, this.coin, () => {
       if (this.finished) return;
       this.score++;
-
       if (this.score > this.highScore) {
         this.highScore = this.score;
         this.saveHighScore(this.highScore);
       }
-
       Sfx.coin();
-
       this.placeCoin();
     });
     this.physics.add.overlap(this.player, this.drones, () => this.finish('A drone caught you!'));
@@ -85,7 +80,6 @@ class CoinDash extends Phaser.Scene {
   }
 
   loadHighScore() {
-    // localStorage can be unavailable (e.g. blocked storage); fall back to 0.
     try {
       const value = parseInt(localStorage.getItem(HIGH_SCORE_KEY), 10);
       return Number.isFinite(value) && value > 0 ? value : 0;
@@ -98,13 +92,12 @@ class CoinDash extends Phaser.Scene {
     try {
       localStorage.setItem(HIGH_SCORE_KEY, String(value));
     } catch (e) {
-      // Ignore storage errors; the high score still shows for this session.
+      // Ignore storage errors
     }
   }
 
   placeCoin() {
     const c = COIN_DASH;
-    // Avoid spawning the next coin directly underneath the player.
     let x, y;
     do {
       x = Phaser.Math.Between(25, c.width - 25);
@@ -132,21 +125,15 @@ class CoinDash extends Phaser.Scene {
     this.finished = true;
     this.physics.pause();
     const c = COIN_DASH;
-
-    this.add.rectangle(c.width / 2, c.height / 2, 460, 190, 0x0a1120, 0.95);
-    this.add.text(c.width / 2, c.height / 2,
-      `${reason}\n${this.score} coins collected\nHigh Score: ${this.highScore}\nPress R to try again`,
-      { font: '24px monospace', color: '#ffffff', align: 'center', lineSpacing: 12 }
-
-    this.add.rectangle(c.width / 2, c.height / 2, 460, 150, c.colors.overlay, 0.95)
+    this.add.rectangle(c.width / 2, c.height / 2, 460, 190, c.colors.overlay, 0.95)
       .setStrokeStyle(2, c.colors.grid);
     this.add.text(c.width / 2, c.height / 2,
-      `${reason}\n${this.score} coins collected\nPress R to try again`,
+      `${reason}\n${this.score} coins collected\nHigh Score: ${this.highScore}\nPress R to try again`,
       { font: '24px monospace', color: c.textColors.hud, align: 'center', lineSpacing: 12 }
-
     ).setOrigin(0.5);
   }
 }
+
 window.coinDashGame = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'game',
