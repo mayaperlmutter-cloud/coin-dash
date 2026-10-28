@@ -1,4 +1,38 @@
 /* global Phaser, COIN_DASH */
+// Tiny Web Audio synth: no audio files. The context is created lazily on first use
+// because browsers only allow audio to start after a user gesture (a key press here).
+const Sfx = {
+  ctx: null,
+  context() {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return null;
+    if (!this.ctx) this.ctx = new AudioCtx();
+    if (this.ctx.state === 'suspended') this.ctx.resume();
+    return this.ctx;
+  },
+  tone(ctx, freq, start, length, volume) {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(freq, start);
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(volume, start + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + length);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(start);
+    osc.stop(start + length + 0.02);
+  },
+  coin() {
+    const ctx = this.context();
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    const v = COIN_DASH.soundVolume;
+    // Classic two-note "bling": B5 then E6.
+    this.tone(ctx, 987.77, t, 0.08, v);
+    this.tone(ctx, 1318.51, t + 0.07, 0.22, v);
+  }
+};
+
 class CoinDash extends Phaser.Scene {
   constructor() { super('CoinDash'); }
 
@@ -9,8 +43,8 @@ class CoinDash extends Phaser.Scene {
     this.deadline = this.time.now + c.roundSeconds * 1000;
     this.physics.world.setBounds(0, 44, c.width, c.height - 44);
     this.add.grid(c.width / 2, c.height / 2, c.width, c.height, 40, 40,
-      c.colors.background, 1, 0x24334b, 0.45);
-    this.hud = this.add.text(18, 12, '', { font: '18px monospace', color: '#ffffff' });
+      c.colors.background, 1, c.colors.grid, 0.5);
+    this.hud = this.add.text(18, 12, '', { font: '18px monospace', color: c.textColors.hud });
     this.player = this.add.rectangle(c.width / 2, c.height / 2, 24, 24, c.colors.player);
     this.physics.add.existing(this.player);
     this.player.body.setCollideWorldBounds(true);
@@ -29,6 +63,7 @@ class CoinDash extends Phaser.Scene {
     this.physics.add.overlap(this.player, this.coin, () => {
       if (this.finished) return;
       this.score++;
+      Sfx.coin();
       this.placeCoin();
     });
     this.physics.add.overlap(this.player, this.drones, () => this.finish('A drone caught you!'));
@@ -67,10 +102,11 @@ class CoinDash extends Phaser.Scene {
     this.finished = true;
     this.physics.pause();
     const c = COIN_DASH;
-    this.add.rectangle(c.width / 2, c.height / 2, 460, 150, 0x0a1120, 0.95);
+    this.add.rectangle(c.width / 2, c.height / 2, 460, 150, c.colors.overlay, 0.95)
+      .setStrokeStyle(2, c.colors.grid);
     this.add.text(c.width / 2, c.height / 2,
       `${reason}\n${this.score} coins collected\nPress R to try again`,
-      { font: '24px monospace', color: '#ffffff', align: 'center', lineSpacing: 12 }
+      { font: '24px monospace', color: c.textColors.hud, align: 'center', lineSpacing: 12 }
     ).setOrigin(0.5);
   }
 }
