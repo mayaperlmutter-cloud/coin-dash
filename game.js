@@ -1,5 +1,5 @@
 /* global Phaser, COIN_DASH */
-<<<<<<< HEAD
+
 const HIGH_SCORE_KEY = 'coinDash.highScore';
 
 // Tiny Web Audio synth: no audio files. The context is created lazily on first use
